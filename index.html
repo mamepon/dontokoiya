@@ -47,8 +47,9 @@
 <div id="ramen-menu" class="container" style="display:none;"></div>
 
 <div id="topping-section" style="display:none;">
-  <h2>麺の量を選択してください</h2>
+  <h2 id="noodle-title">麺の量を選択してください</h2>
   <div id="noodle-menu" class="container"></div>
+
 
   <h2>トッピングを選んでください（複数可）</h2>
   <div id="topping-menu" class="container"></div>
@@ -195,7 +196,6 @@ function renderMenu(list, containerId) {
     const button = document.createElement("button");
     button.innerHTML = `${item.name}<br>${item.price !== undefined ? item.price + "円" : ""}`;
 
-    // 選択状態を判断
     let isSelected = false;
     if (containerId === "noodle-menu" && selectedNoodle?.name === item.name) isSelected = true;
     if (containerId === "topping-menu" && selectedToppings.some(t => t.name === item.name)) isSelected = true;
@@ -206,7 +206,6 @@ function renderMenu(list, containerId) {
     if (containerId === "ramen-menu" && selectedRamen?.name === item.name) isSelected = true;
     if (isSelected) button.classList.add("selected");
 
-    // イベントハンドラ
     if (containerId === "category-menu") {
       button.onclick = () => selectCategory(item);
 
@@ -216,17 +215,21 @@ function renderMenu(list, containerId) {
         button.classList.add("selected");
         selectedRamen = item;
         selectedNoodle = noodleList[0];
-        selectedRiceUpgrade = riceUpgradeList.find(r => r.name === "変更なし") || riceUpgradeList[0];
-        selectedMeatRiceUpgrade = meatRiceUpgradeList.find(r => r.name === "変更なし") || meatRiceUpgradeList[0];
         selectedToppings = [toppingList.find(t => t.name === "追加なし")];
         selectedDon = [donList.find(d => d.name === "追加なし")];
         selectedDrinks = [drinkList.find(d => d.name === "注文なし")];
+        selectedRiceUpgrade = riceUpgradeList.find(r => r.name === "変更なし") || riceUpgradeList[0];
+        selectedMeatRiceUpgrade = meatRiceUpgradeList.find(r => r.name === "変更なし") || meatRiceUpgradeList[0];
 
         document.getElementById("topping-section").style.display = "block";
         document.getElementById("confirm-button").textContent = editingIndex !== null ? "修正を確定" : "カートに追加";
         document.getElementById("selection-status").style.display = "block";
 
-        renderMenu(noodleList, "noodle-menu");
+        const isRamenOnly = ramenList.some(r => r.name === selectedRamen.name);
+        document.getElementById("noodle-title").style.display = isRamenOnly ? "block" : "none";
+        document.getElementById("noodle-menu").style.display = isRamenOnly ? "flex" : "none";
+        if (isRamenOnly) renderMenu(noodleList, "noodle-menu");
+
         renderMenu(toppingList, "topping-menu");
 
         const isUpgradeSet = selectedRamen.name === "満腹セット【中盛り+ライス】" || selectedRamen.name === "昼飯セット【並盛り+半ライス】";
@@ -356,7 +359,6 @@ function renderMenu(list, containerId) {
     container.appendChild(div);
   });
 }
-
 
 function selectCategory(item) {
   // タイトル切り替え
