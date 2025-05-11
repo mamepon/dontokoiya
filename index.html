@@ -47,14 +47,24 @@
 <div id="ramen-menu" class="container" style="display:none;"></div>
 
 <div id="topping-section" style="display:none;">
-  <h2>麺の量を選択してください</h4>
+  <h2>麺の量を選択してください</h2>
   <div id="noodle-menu" class="container"></div>
 
-  <h2>トッピングを選んでください（複数可）</h4>
+  <h2>トッピングを選んでください（複数可）</h2>
   <div id="topping-menu" class="container"></div>
 
-  <h2>丼もいかがでしょうか（オプション）</h4>
-  <div id="don-menu" class="container" style="display:none;"></div>
+  <h2 id="upgrade-title">半ライスのアップグレードはいかがでしょうか（オプション）</h2>
+  <div id="rice-upgrade-menu" class="container"></div>
+
+  <h2 id="meat-rice-upgrade-title" style="display:none;">肉乗せライスのアップグレードはいかがでしょうか（オプション）</h2>
+  <div id="meat-rice-upgrade-menu" class="container" style="display:none;"></div>
+
+  <h2>丼もいかがでしょうか（オプション）</h2>
+  <div id="don-menu" class="container"></div>
+
+
+  <h2>ドリンクもいかがでしょうか（オプション）</h2>
+  <div id="drink-menu" class="container" style="display:none;"></div>
 
   <p id="total-price">合計金額: 0円</p>
   <button onclick="addToCart()" id="confirm-button">カートに追加</button>
@@ -101,7 +111,8 @@ const donList = [
   { name: "ネギチャ丼", price: 200 },
   { name: "チャー玉丼", price: 150 },
   { name: "肉乗せライス", price: 100 },
-  { name: "肉乗せ卵かけご飯", price: 150 }
+  { name: "肉乗せ卵かけご飯", price: 150 },
+  { name: "追加なし", price: 0 }
 ];
 
 const toppingList = [
@@ -119,8 +130,12 @@ const toppingList = [
   { name: "たまねぎ", price: 50 },
   { name: "紫玉ねぎ", price: 50 },
   { name: "海苔増し", price: 100 },
+  { name: "青菜増し", price: 100 },
   { name: "チャーシュー", price: 200 },
-  { name: "味玉", price: 100 }
+  { name: "味玉", price: 100 },
+  { name: "ネギ抜き", price: 0 },
+  { name: "青菜抜き", price: 0 },
+  { name: "追加なし", price: 0 }
 ];
 
 const noodleList = [
@@ -134,12 +149,41 @@ const categoryList = [
   { name: "セットメニュー", type: "set" }
 ];
 
+const drinkList = [
+  { name: "瓶ビール", price: 550 },
+  { name: "缶ビール", price: 350 },
+  { name: "注文なし", price: 0 }
+];
+  
+const riceUpgradeList = [
+  { name: "並ライスに変更", price: 50 },
+  { name: "肉乗せに変更", price: 50 },
+  { name: "チャー玉に変更", price: 100 },
+  { name: "卵かけご飯に変更", price: 100 },
+  { name: "ネギチャ丼に変更", price: 150 },
+  { name: "変更なし", price: 0 }
+];
+
+const meatRiceUpgradeList = [
+  { name: "半ライスに変更", price: 0 },
+  { name: "並ライスに変更", price: 0 },
+  { name: "チャー玉に変更", price: 50 },
+  { name: "卵かけご飯に変更", price: 50 },
+  { name: "ネギチャ丼に変更", price: 100 },
+  { name: "変更なし", price: 0 }
+];
+
+
 let selectedRamen = null;
-let selectedToppings = [];
-let selectedDon = [];
+let selectedToppings = [toppingList.find(t => t.name === "追加なし")];
+let selectedDon = [donList.find(d => d.name === "追加なし")];
+let selectedDrinks = [drinkList.find(d => d.name === "注文なし")];
 let selectedNoodle = noodleList.find(n => n.name === "普通") || noodleList[0];
 let cartTotal = 0;
 let editingIndex = null;
+let selectedRiceUpgrade = riceUpgradeList.find(r => r.name === "変更なし") || riceUpgradeList[0];
+let selectedMeatRiceUpgrade = meatRiceUpgradeList.find(r => r.name === "変更なし") || meatRiceUpgradeList[0];
+
 
 function renderMenu(list, containerId) {
   const container = document.getElementById(containerId);
@@ -149,56 +193,164 @@ function renderMenu(list, containerId) {
     const div = document.createElement("div");
     div.className = "item";
     const button = document.createElement("button");
-    if (containerId === "category-menu") {
-      button.innerHTML = `${item.name}`;
-    } 
-    else {
-      button.innerHTML = `${item.name}<br>${item.price}円`;
-    }
+    button.innerHTML = `${item.name}<br>${item.price !== undefined ? item.price + "円" : ""}`;
 
-    // ★ 選択状態に応じて .selected を button に付与
+    // 選択状態を判断
     let isSelected = false;
-    if (containerId === "noodle-menu" && selectedNoodle?.name === item.name) {
-      isSelected = true;
-    }
-    if (containerId === "topping-menu" && selectedToppings.some(t => t.name === item.name)) {
-      isSelected = true;
-    }
-    if (containerId === "don-menu" && selectedDon.some(d => d.name === item.name)) {
-      isSelected = true;
-    }
-    if (containerId === "ramen-menu" && selectedRamen?.name === item.name) {
-      isSelected = true;
-    }
+    if (containerId === "noodle-menu" && selectedNoodle?.name === item.name) isSelected = true;
+    if (containerId === "topping-menu" && selectedToppings.some(t => t.name === item.name)) isSelected = true;
+    if (containerId === "don-menu" && selectedDon.some(d => d.name === item.name)) isSelected = true;
+    if (containerId === "drink-menu" && selectedDrinks.some(d => d.name === item.name)) isSelected = true;
+    if (containerId === "rice-upgrade-menu" && selectedRiceUpgrade?.name === item.name) isSelected = true;
+    if (containerId === "meat-rice-upgrade-menu" && selectedMeatRiceUpgrade?.name === item.name) isSelected = true;
+    if (containerId === "ramen-menu" && selectedRamen?.name === item.name) isSelected = true;
     if (isSelected) button.classList.add("selected");
 
-    button.onclick = () => {
-      if (containerId === "category-menu") {
-        selectCategory(item);
-      } else if (containerId === "ramen-menu") {
+    // イベントハンドラ
+    if (containerId === "category-menu") {
+      button.onclick = () => selectCategory(item);
+
+    } else if (containerId === "ramen-menu") {
+      button.onclick = () => {
         document.querySelectorAll("#ramen-menu .item button").forEach(el => el.classList.remove("selected"));
         button.classList.add("selected");
         selectedRamen = item;
-        //selectedToppings = [];
-        //selectedDon = [];
         selectedNoodle = noodleList[0];
+        selectedRiceUpgrade = riceUpgradeList.find(r => r.name === "変更なし") || riceUpgradeList[0];
+        selectedMeatRiceUpgrade = meatRiceUpgradeList.find(r => r.name === "変更なし") || meatRiceUpgradeList[0];
+        selectedToppings = [toppingList.find(t => t.name === "追加なし")];
+        selectedDon = [donList.find(d => d.name === "追加なし")];
+        selectedDrinks = [drinkList.find(d => d.name === "注文なし")];
+
         document.getElementById("topping-section").style.display = "block";
         document.getElementById("confirm-button").textContent = editingIndex !== null ? "修正を確定" : "カートに追加";
         document.getElementById("selection-status").style.display = "block";
-        updateSelectionStatus();
 
         renderMenu(noodleList, "noodle-menu");
         renderMenu(toppingList, "topping-menu");
+
+        const isUpgradeSet = selectedRamen.name === "満腹セット【中盛り+ライス】" || selectedRamen.name === "昼飯セット【並盛り+半ライス】";
+        document.getElementById("upgrade-title").style.display = isUpgradeSet ? "block" : "none";
+        document.getElementById("rice-upgrade-menu").style.display = isUpgradeSet ? "flex" : "none";
+        if (isUpgradeSet) renderMenu(riceUpgradeList, "rice-upgrade-menu");
+
+        const isMeatUpgradeSet = selectedRamen.name === "朝飯セット【半ラーメン+肉のせご飯】";
+        document.getElementById("meat-rice-upgrade-title").style.display = isMeatUpgradeSet ? "block" : "none";
+        document.getElementById("meat-rice-upgrade-menu").style.display = isMeatUpgradeSet ? "flex" : "none";
+        if (isMeatUpgradeSet) renderMenu(meatRiceUpgradeList, "meat-rice-upgrade-menu");
+
+        document.getElementById("don-menu").style.display = "flex";
+        renderMenu(donList, "don-menu");
+
+        document.getElementById("drink-menu").style.display = "flex";
+        renderMenu(drinkList, "drink-menu");
+
         updateTotalPrice();
         updateSelectionStatus();
-      } else if (containerId === "topping-menu") {
-        toggleTopping(div, item);
-      } else if (containerId === "noodle-menu") {
-        selectNoodle(div, item);
-      } else if (containerId === "don-menu") {
-        toggleDon(div, item);
-      }
-    };
+      };
+
+    } else if (containerId === "noodle-menu") {
+      button.onclick = () => {
+        selectedNoodle = item;
+        document.querySelectorAll("#noodle-menu .item button").forEach(b => b.classList.remove("selected"));
+        button.classList.add("selected");
+        updateTotalPrice();
+        updateSelectionStatus();
+      };
+
+    } else if (containerId === "topping-menu") {
+      button.onclick = () => {
+        if (item.name === "追加なし") {
+          selectedToppings = [item];
+        } else {
+          selectedToppings = selectedToppings.filter(t => t.name !== "追加なし");
+          const idx = selectedToppings.findIndex(t => t.name === item.name);
+          if (idx >= 0) {
+            selectedToppings.splice(idx, 1);
+          } else {
+            selectedToppings.push(item);
+          }
+        }
+        document.querySelectorAll("#topping-menu .item button").forEach(b => {
+          const name = b.innerText.split("\n")[0];
+          if (selectedToppings.some(t => t.name === name)) {
+            b.classList.add("selected");
+          } else {
+            b.classList.remove("selected");
+          }
+        });
+        updateTotalPrice();
+        updateSelectionStatus();
+      };
+
+    } else if (containerId === "don-menu") {
+      button.onclick = () => {
+        if (item.name === "追加なし") {
+          selectedDon = [item];
+        } else {
+          selectedDon = selectedDon.filter(d => d.name !== "追加なし");
+          const idx = selectedDon.findIndex(d => d.name === item.name);
+          if (idx >= 0) {
+            selectedDon.splice(idx, 1);
+          } else {
+            selectedDon.push(item);
+          }
+        }
+        document.querySelectorAll("#don-menu .item button").forEach(b => {
+          const name = b.innerText.split("\n")[0];
+          if (selectedDon.some(d => d.name === name)) {
+            b.classList.add("selected");
+          } else {
+            b.classList.remove("selected");
+          }
+        });
+        updateTotalPrice();
+        updateSelectionStatus();
+      };
+
+    } else if (containerId === "drink-menu") {
+      button.onclick = () => {
+        if (item.name === "注文なし") {
+          selectedDrinks = [item];
+        } else {
+          selectedDrinks = selectedDrinks.filter(d => d.name !== "注文なし");
+          const idx = selectedDrinks.findIndex(d => d.name === item.name);
+          if (idx >= 0) {
+            selectedDrinks.splice(idx, 1);
+          } else {
+            selectedDrinks.push(item);
+          }
+        }
+        document.querySelectorAll("#drink-menu .item button").forEach(b => {
+          const name = b.innerText.split("\n")[0];
+          if (selectedDrinks.some(d => d.name === name)) {
+            b.classList.add("selected");
+          } else {
+            b.classList.remove("selected");
+          }
+        });
+        updateTotalPrice();
+        updateSelectionStatus();
+      };
+
+    } else if (containerId === "rice-upgrade-menu") {
+      button.onclick = () => {
+        selectedRiceUpgrade = item;
+        document.querySelectorAll("#rice-upgrade-menu .item button").forEach(b => b.classList.remove("selected"));
+        button.classList.add("selected");
+        updateTotalPrice();
+        updateSelectionStatus();
+      };
+
+    } else if (containerId === "meat-rice-upgrade-menu") {
+      button.onclick = () => {
+        selectedMeatRiceUpgrade = item;
+        document.querySelectorAll("#meat-rice-upgrade-menu .item button").forEach(b => b.classList.remove("selected"));
+        button.classList.add("selected");
+        updateTotalPrice();
+        updateSelectionStatus();
+      };
+    }
 
     div.appendChild(button);
     container.appendChild(div);
@@ -266,7 +418,21 @@ function toggleDon(el, item) {
   updateSelectionStatus(); 
 }
 
+function toggleDrink(el, item) {
+  const idx = selectedDrinks.findIndex(d => d.name === item.name);
+  const button = el.querySelector("button");
 
+  if (idx >= 0) {
+    selectedDrinks.splice(idx, 1);
+    button.classList.remove("selected");
+  } else {
+    selectedDrinks.push(item);
+    button.classList.add("selected");
+  }
+
+  updateTotalPrice();
+  updateSelectionStatus();
+}
 
 function selectNoodle(el, item) {
   selectedNoodle = item;
@@ -282,26 +448,35 @@ function addToCart() {
     alert("ラーメンまたはセットを選択してください。");
     return;
   }
+
   const noodle = selectedNoodle.name;
   const toppings = selectedToppings.map(t => t.name).join(", ") || "なし";
   const dons = selectedDon.map(d => d.name).join(", ") || "なし";
-  const total = selectedRamen.price + selectedNoodle.price +
+  const drinks = selectedDrinks.map(d => d.name).join(", ") || "なし";
+  const riceUpgrade = selectedRiceUpgrade?.name || "なし";
+  const meatRiceUpgrade = selectedMeatRiceUpgrade?.name || "なし";
+
+  const total =
+    (selectedRamen?.price || 0) +
+    (selectedNoodle?.price || 0) +
     selectedToppings.reduce((sum, t) => sum + t.price, 0) +
-    selectedDon.reduce((sum, d) => sum + d.price, 0);
+    selectedDon.reduce((sum, d) => sum + d.price, 0) +
+    selectedDrinks.reduce((sum, d) => sum + d.price, 0) +
+    (selectedRiceUpgrade?.price || 0) +
+    (selectedMeatRiceUpgrade?.price || 0); // ← 朝飯セットアップグレード加算
 
   const li = document.createElement("li");
-  li.textContent = `${selectedRamen.name}（${noodle}, トッピング：${toppings}, 丼：${dons}） - ${total}円`;
+  li.textContent = `${selectedRamen.name}（${noodle}, トッピング：${toppings}, 半ライスアップ：${riceUpgrade}, 朝飯アップ：${meatRiceUpgrade}, 丼：${dons}, ドリンク：${drinks}） - ${total}円`;
   li.dataset.price = total;
 
   const editBtn = document.createElement("span");
-editBtn.className = "edit-button";
-editBtn.textContent = "修正";
-editBtn.onclick = (e) => {
-  e.stopPropagation();
-  editCartItem(li);
-};
-li.appendChild(editBtn);
-
+  editBtn.className = "edit-button";
+  editBtn.textContent = "修正";
+  editBtn.onclick = (e) => {
+    e.stopPropagation();
+    editCartItem(li);
+  };
+  li.appendChild(editBtn);
 
   const deleteBtn = document.createElement("span");
   deleteBtn.className = "delete-button";
@@ -328,6 +503,7 @@ li.appendChild(editBtn);
   resetSelection();
 }
 
+
 function resetSelection() {
   selectedRamen = null;
   selectedToppings = [];
@@ -351,7 +527,28 @@ function resetSelection() {
 
 }
 
-
+function renderRiceUpgradeMenu() {
+  const container = document.getElementById("rice-upgrade-menu");
+  container.innerHTML = "";
+  riceUpgradeList.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "item";
+    const button = document.createElement("button");
+    button.innerHTML = `${item.name}<br>${item.price}円`;
+    if (selectedRiceUpgrade.name === item.name) {
+      button.classList.add("selected");
+    }
+    button.onclick = () => {
+      selectedRiceUpgrade = item;
+      document.querySelectorAll("#rice-upgrade-menu .item button").forEach(b => b.classList.remove("selected"));
+      button.classList.add("selected");
+      updateTotalPrice();
+      updateSelectionStatus();
+    };
+    div.appendChild(button);
+    container.appendChild(div);
+  });
+}
 
 
 function showPayment() {
@@ -370,22 +567,21 @@ function calculateChange() {
     result.innerText = `お釣り: ${change}円`;
   }
 }
+  
 function updateTotalPrice() {
   let total = selectedRamen?.price || 0;
   total += selectedNoodle?.price || 0;
   total += selectedToppings.reduce((sum, t) => sum + t.price, 0);
   total += selectedDon.reduce((sum, d) => sum + d.price, 0);
-  document.getElementById("total-price").innerText = `合計金額: ${total}円`;
+  total += selectedDrinks.reduce((sum, d) => sum + d.price, 0);
+  total += selectedRiceUpgrade?.price || 0; // ★ ここを追加
+  total += selectedMeatRiceUpgrade?.price || 0;
 
-  // ラーメン単品の場合に丼を表示
-  if (selectedRamen && !setList.some(set => set.name === selectedRamen.name)) {
-    document.getElementById("don-menu").style.display = "flex";
-    renderMenu(donList, "don-menu");
-  } else {
-    document.getElementById("don-menu").style.display = "none";
-    document.getElementById("don-menu").style.display = "none";
-  }
+  document.getElementById("total-price").innerText = `合計金額: ${total}円`;
 }
+
+
+
 function editCartItem(li) {
   console.log("editCartItem called:", li.textContent);
 
@@ -427,7 +623,6 @@ function editCartItem(li) {
   updateSelectionStatus(); 
   document.getElementById("selection-status").style.display = "block";
   updateSelectionStatus();
-
 }
 
 function updateSelectionStatus() {
@@ -438,11 +633,17 @@ function updateSelectionStatus() {
   const noodle = selectedNoodle ? selectedNoodle.name : "未選択";
   const toppings = selectedToppings.map(t => t.name).join("、") || "なし";
   const dons = selectedDon.map(d => d.name).join("、") || "なし";
+  const drinks = selectedDrinks.map(d => d.name).join("、") || "なし";
+  const riceUpgrade = selectedRiceUpgrade ? selectedRiceUpgrade.name : "なし";
+  const meatRice = selectedMeatRiceUpgrade?.name || "なし";
 
   let total = selectedRamen?.price || 0;
   total += selectedNoodle?.price || 0;
   total += selectedToppings.reduce((sum, t) => sum + t.price, 0);
   total += selectedDon.reduce((sum, d) => sum + d.price, 0);
+  total += selectedDrinks.reduce((sum, d) => sum + d.price, 0);
+  total += selectedRiceUpgrade?.price || 0;
+  total += selectedMeatRiceUpgrade?.price || 0; // ← ★ここが不足していた
 
   status.innerHTML = `
     <strong>【選択中】</strong><br>
@@ -450,15 +651,21 @@ function updateSelectionStatus() {
     🍥 麺量：${noodle}<br>
     🧄 トッピング：${toppings}<br>
     🍚 丼：${dons}<br>
+    🍳 ライスアップグレード：${riceUpgrade}<br>
+    🥓 朝飯アップグレード：${meatRice}<br>
+    🥤 ドリンク：${drinks}<br>
     💰 小計：<strong>${total}円</strong>
   `;
 }
+
+
 
 
 window.onload = () => {
   document.getElementById("category-menu").style.display = "flex";
   renderMenu(categoryList, "category-menu");
 };
+
 
 </script>
 
