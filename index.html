@@ -13,8 +13,19 @@
   .edit-button { margin-left: 10px; color: blue; cursor: pointer; }
   .delete-button { margin-left: 10px; color: red; cursor: pointer; }
   @media (max-width: 600px) {
-    .item button { width: 100px; height: 80px; font-size: 12px; }
+  .item {
+    width: 50%;  /* 横に2つ並べる */
+    box-sizing: border-box;
+    padding: 5px;
   }
+
+  .item button {
+    width: 100%;
+    height: 80px;
+    font-size: 12px;
+  }
+}
+
 </style>
 
 </head>
@@ -645,19 +656,39 @@ function updateSelectionStatus() {
   total += selectedDon.reduce((sum, d) => sum + d.price, 0);
   total += selectedDrinks.reduce((sum, d) => sum + d.price, 0);
   total += selectedRiceUpgrade?.price || 0;
-  total += selectedMeatRiceUpgrade?.price || 0; // ← ★ここが不足していた
+  total += selectedMeatRiceUpgrade?.price || 0;
 
-  status.innerHTML = `
-    <strong>【選択中】</strong><br>
-    🍜 ${ramen}<br>
-    🍥 麺量：${noodle}<br>
-    🧄 トッピング：${toppings}<br>
-    🍚 丼：${dons}<br>
-    🍳 ライスアップグレード：${riceUpgrade}<br>
-    🥓 朝飯アップグレード：${meatRice}<br>
-    🥤 ドリンク：${drinks}<br>
-    💰 小計：<strong>${total}円</strong>
-  `;
+  // 🧾 表示する部分を動的に構築
+  let html = `<strong>【選択中】</strong><br>
+    🍜 ${ramen}<br>`;
+
+  if (selectedNoodle.name !== "普通") {
+    html += `🍥 麺量：${noodle}<br>`;
+  }
+
+  if (!(selectedToppings.length === 1 && selectedToppings[0].name === "追加なし")) {
+    html += `🧄 トッピング：${toppings}<br>`;
+  }
+
+  if (!(selectedDon.length === 1 && selectedDon[0].name === "追加なし")) {
+    html += `🍚 丼：${dons}<br>`;
+  }
+
+  if (selectedRiceUpgrade?.name !== "変更なし") {
+    html += `🍳 ライスアップグレード：${riceUpgrade}<br>`;
+  }
+
+  if (selectedMeatRiceUpgrade?.name !== "変更なし") {
+    html += `🥓 朝飯アップグレード：${meatRice}<br>`;
+  }
+
+  if (!(selectedDrinks.length === 1 && selectedDrinks[0].name === "注文なし")) {
+    html += `🥤 ドリンク：${drinks}<br>`;
+  }
+
+  html += `💰 小計：<strong>${total}円</strong>`;
+
+  status.innerHTML = html;
 }
 
 
