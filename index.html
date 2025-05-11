@@ -62,20 +62,20 @@
   <div id="noodle-menu" class="container"></div>
 
 
-  <h2>トッピングを選んでください（複数可）</h2>
+  <h2>トッピング（複数可）</h2>
   <div id="topping-menu" class="container"></div>
 
-  <h2 id="upgrade-title">半ライスのアップグレードはいかがでしょうか（オプション）</h2>
+  <h2 id="upgrade-title">半ライスのアップグレード（オプション）</h2>
   <div id="rice-upgrade-menu" class="container"></div>
 
-  <h2 id="meat-rice-upgrade-title" style="display:none;">肉乗せライスのアップグレードはいかがでしょうか（オプション）</h2>
+  <h2 id="meat-rice-upgrade-title" style="display:none;">肉乗せライスのアップグレード（オプション）</h2>
   <div id="meat-rice-upgrade-menu" class="container" style="display:none;"></div>
 
-  <h2>丼もいかがでしょうか（オプション）</h2>
+  <h2>ご飯・丼（オプション）</h2>
   <div id="don-menu" class="container"></div>
 
 
-  <h2>ドリンクもいかがでしょうか（オプション）</h2>
+  <h2>ドリンク（オプション）</h2>
   <div id="drink-menu" class="container" style="display:none;"></div>
 
   <p id="total-price">合計金額: 0円</p>
@@ -593,13 +593,23 @@ function updateTotalPrice() {
   document.getElementById("total-price").innerText = `合計金額: ${total}円`;
 }
 
+function getValue(label, contentText) {
+  const regex = new RegExp(label + "：([^,）]+(?:,[^,）]+)*)", "g");
+  const values = [];
+  let match;
+  while ((match = regex.exec(contentText)) !== null) {
+    const raw = match[1].split(",").map(v => v.trim());
+    values.push(...raw);
+  }
+  return values;
+}
 
 
 function editCartItem(li) {
   console.log("editCartItem called:", li.textContent);
 
   const fullText = li.textContent.replace(/\s*(修正|削除).*$/, "").trim();
-  const nameOnly = fullText.split("（")[0]; // 最初の全角カッコまでを商品名とする
+  const nameOnly = fullText.split("（")[0];
 
   const isSet = setList.some(set => set.name === nameOnly);
   selectedRamen = isSet
@@ -611,32 +621,78 @@ function editCartItem(li) {
     return;
   }
 
-  selectedToppings = toppingList.filter(t => fullText.includes(t.name));
-  selectedDon = donList.filter(d => fullText.includes(d.name));
-  selectedNoodle = noodleList.find(n => fullText.includes(n.name)) || noodleList[0];
+  // 内容部分を抽出
+  const match = fullText.match(/（(.+)）/);
+  const contentText = match ? match[1] : "";
+
+  // 各パートごとに抽出
+  const noodleName = contentText.split(",")[0].trim();
+  selectedNoodle = noodleList.find(n => noodleName.includes(n.name)) || noodleList[0];
+
+  const toppingNames = getValue("トッピング", contentText);
+  selectedToppings = toppingList.filter(t => toppingNames.includes(t.name));
+  if (selectedToppings.length === 0) {
+    selectedToppings = [toppingList.find(t => t.name === "追加なし")];
+  }
+
+  const donNames = getValue("丼", contentText);
+  selectedDon = donList.filter(d => donNames.includes(d.name));
+  if (selectedDon.length === 0) {
+    selectedDon = [donList.find(d => d.name === "追加なし")];
+  }
+
+  const drinkNames = getValue("ドリンク", contentText);
+  selectedDrinks = drinkList.filter(d => drinkNames.includes(d.name));
+  if (selectedDrinks.length === 0) {
+    selectedDrinks = [drinkList.find(d => d.name === "注文なし")];
+  }
+
+  const riceName = getValue("半ライスアップ", contentText)[0] || "変更なし";
+  selectedRiceUpgrade = riceUpgradeList.find(r => r.name === riceName) || riceUpgradeList[0];
+
+  const meatRiceName = getValue("朝飯アップ", contentText)[0] || "変更なし";
+  selectedMeatRiceUpgrade = meatRiceUpgradeList.find(r => r.name === meatRiceName) || meatRiceUpgradeList[0];
 
   editingIndex = [...document.getElementById("cart-list").children].indexOf(li);
 
+  // UI更新
   document.getElementById("initial-title").style.display = "none";
   document.getElementById("ramen-title").style.display = isSet ? "none" : "block";
   document.getElementById("set-title").style.display = isSet ? "block" : "none";
   document.getElementById("category-menu").style.display = "none";
   document.getElementById("ramen-menu").style.display = "flex";
   document.getElementById("topping-section").style.display = "block";
-  document.getElementById("don-menu").style.display = isSet ? "none" : "flex";
   document.getElementById("confirm-button").textContent = "修正を確定";
-  
+
+  const isRamenOnly = ramenList.some(r => r.name === selectedRamen.name);
+  document.getElementById("noodle-title").style.display = isRamenOnly ? "block" : "none";
+  document.getElementById("noodle-menu").style.display = isRamenOnly ? "flex" : "none";
+
+  const isUpgradeSet = selectedRamen.name === "満腹セット【中盛り+ライス】" || selectedRamen.name === "昼飯セット【並盛り+半ライス】";
+  document.getElementById("upgrade-title").style.display = isUpgradeSet ? "block" : "none";
+  document.getElementById("rice-upgrade-menu").style.display = isUpgradeSet ? "flex" : "none";
+
+  const isMeatUpgradeSet = selectedRamen.name === "朝飯セット【半ラーメン+肉のせご飯】";
+  document.getElementById("meat-rice-upgrade-title").style.display = isMeatUpgradeSet ? "block" : "none";
+  document.getElementById("meat-rice-upgrade-menu").style.display = isMeatUpgradeSet ? "flex" : "none";
+
+  document.getElementById("don-menu").style.display = "flex";
+  document.getElementById("drink-menu").style.display = "flex";
+  document.getElementById("back-button").style.display = "inline-block";
+  document.getElementById("selection-status").style.display = "block";
+
   renderMenu(isSet ? setList : ramenList, "ramen-menu");
   renderMenu(noodleList, "noodle-menu");
   renderMenu(toppingList, "topping-menu");
-  if (!isSet) renderMenu(donList, "don-menu");
+  renderMenu(donList, "don-menu");
+  renderMenu(drinkList, "drink-menu");
+  if (isUpgradeSet) renderMenu(riceUpgradeList, "rice-upgrade-menu");
+  if (isMeatUpgradeSet) renderMenu(meatRiceUpgradeList, "meat-rice-upgrade-menu");
 
-  document.getElementById("back-button").style.display = "inline-block";
   updateTotalPrice();
-  updateSelectionStatus(); 
-  document.getElementById("selection-status").style.display = "block";
   updateSelectionStatus();
 }
+
 
 function updateSelectionStatus() {
   const status = document.getElementById("selection-status");
@@ -658,7 +714,7 @@ function updateSelectionStatus() {
   total += selectedRiceUpgrade?.price || 0;
   total += selectedMeatRiceUpgrade?.price || 0;
 
-  // 🧾 表示する部分を動的に構築
+  // 表示内容を構築
   let html = `<strong>【選択中】</strong><br>
     🍜 ${ramen}<br>`;
 
@@ -675,7 +731,7 @@ function updateSelectionStatus() {
   }
 
   if (selectedRiceUpgrade?.name !== "変更なし") {
-    html += `🍳 ライスアップグレード：${riceUpgrade}<br>`;
+    html += `🍳 半ライスアップグレード：${riceUpgrade}<br>`;
   }
 
   if (selectedMeatRiceUpgrade?.name !== "変更なし") {
@@ -690,8 +746,6 @@ function updateSelectionStatus() {
 
   status.innerHTML = html;
 }
-
-
 
 
 window.onload = () => {
